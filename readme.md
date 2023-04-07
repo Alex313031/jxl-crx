@@ -4,7 +4,9 @@ JPEG XL browser extension
 This is a browser extension that brings [JPEG XL] support for browsers.
 
 [JPEG XL]: <https://jpegxl.info>
-It uses a WebAssembly implementation of [libjxl](https://github.com/libjxl/libjxl).
+It uses a WebAssembly implementation of [libjxl].
+
+[libjxl]: <https://github.com/libjxl/libjxl>
 
 License
 ---
@@ -25,7 +27,7 @@ Installation
 [Web Store listing]: <https://chrome.google.com/webstore/detail/jpeg-xl-viewer/bkhdlfmkaenamnlbpdfplekldlnghchp>
 [Firefox Add-ons listing]: <https://addons.mozilla.org/addon/jxl>
 
-Build instructions
+Build Instructions
 ---
 
 ~~~
