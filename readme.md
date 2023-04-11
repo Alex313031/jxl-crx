@@ -3,9 +3,9 @@ JPEG XL browser extension
 
 This is a browser extension that brings [JPEG XL] support for browsers.
 
-[JPEG XL]: <https://jpegxl.info>
 It uses a WebAssembly implementation of [libjxl].
 
+[JPEG XL]: <https://jpegxl.info>
 [libjxl]: <https://github.com/libjxl/libjxl>
 
 License
@@ -42,7 +42,7 @@ Note for [Guix] users: You may prefer to use `scripts/guix-build.sh` instead, wh
 
 [Guix]: <https://guix.gnu.org>
 
-Previous versions
+Previous Versions
 ---
 
 The source code for versions prior to 0.2 can be found here: <https://gist.github.com/zamfofex/e6e0109862e5da8e7f6fa634b1ceca26>
