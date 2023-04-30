@@ -12,11 +12,11 @@ let createWorker = () => new Promise(f =>
 	let i = 0
 	worker.addEventListener("message", () =>
 	{
-		let load = async (img, src) =>
+		let load = async (img, src, descriptor) =>
 		{
-			// note: if ‘src’ is empty, that might mean this ‘<img>’ element is a placeholder for scripting (very likely)
-			// in any case, the request is likely to fail because the request will be made to the document’s base URL
-			// to avoid interfering with scripting behavior, loading the URL as JPEG XL shouldn’t be tried
+			// Note: If ‘src’ is empty, that might mean this ‘<img>’ element is a placeholder for scripting (very likely).
+			// In any case, the request is likely to fail because the request will be made to the document’s base URL.
+			// To avoid interfering with scripting behavior, loading the URL as JPEG XL shouldn’t be tried.
 			if (!src) return
 			
 			img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
@@ -28,17 +28,44 @@ let createWorker = () => new Promise(f =>
 				
 				if (data.error)
 				{
-					dispatchError(img)
 					img.removeAttribute("src")
+					dispatchError(img)
 					return
 				}
 				
-				img.src = data.url
+				if (descriptor)
+				{
+					img.removeAttribute("src")
+					
+					if (descriptor instanceof Array)
+					{
+						img.srcset = data.url + " " + descriptor[0]
+						img.sizes = descriptor[1]
+					}
+					else
+					{
+						img.srcset = data.url + " " + descriptor
+					}
+				}
+				else
+				{
+					img.src = data.url
+				}
 			}
 			
 			let controller = new AbortController()
 			
-			let response = await fetch(new URL(src, document.baseURI), {signal: controller.signal, headers})
+			let response
+			try
+			{
+				response = await fetch(new URL(src, document.baseURI), {signal: controller.signal, headers})
+			}
+			catch
+			{
+				dispatchError(img)
+				throw new Error("network error")
+			}
+			
 			if (!mimeRegex.test(response.headers.get("content-type") ?? "image/jxl"))
 			{
 				// controller.abort()
@@ -58,10 +85,10 @@ let createWorker = () => new Promise(f =>
 	}, {once: true})
 })
 
-let load = (img, src = img.currentSrc) =>
+let load = (img, src, descriptor) =>
 {
-	if (loadJPEGXL) loadJPEGXL[n()](img,src)
-	else delegated.push([img, src])
+	if (loadJPEGXL) loadJPEGXL[n()](img, src, descriptor)
+	else delegated.push([img, src, descriptor])
 }
 
 let i = -1
@@ -72,7 +99,10 @@ addEventListener("error", event =>
 	if (!(event.target instanceof HTMLImageElement)) return
 	event.stopImmediatePropagation()
 	if (event.target.closest("picture")) return
-	load(event.target)
+	
+	let img = event.target
+	let descriptor = findDescriptor(img, img.currentSrc, img.srcset)
+	load(img, img.currentSrc, descriptor[1])
 }, true)
 
 let dispatchError = img =>
@@ -98,9 +128,52 @@ Promise.all(workers)
 	.then(workers =>
 	{
 		loadJPEGXL = workers
-		for (let [img, src] of delegated) load(img, src)
+		for (let [img, src, descriptor] of delegated) load(img, src, descriptor)
 		delegated = undefined
 	})
+
+let findDescriptor = (img, currentSrc, srcset) =>
+{
+	if (currentSrc) currentSrc = new URL(currentSrc).href
+	
+	let srcs = srcset.split(",")
+	
+	let descriptor
+	
+	for (let [i, candidate] of srcs.entries())
+	{
+		let match = candidate.match(/^\s*([^]+?)(\s+?:([0-9]*[wx]))?\s*$/)
+		if (!match) continue
+		
+		let src = match[1]
+		
+		if (currentSrc && new URL(src, document.baseURI).href !== currentSrc)
+			continue
+		
+		descriptor = match[2] ?? ""
+		
+		if (descriptor.endsWith("w"))
+		{
+			let size = node.sizes.split(",")[i]
+			if (size)
+			{
+				descriptor = [descriptor, size]
+			}
+			else
+			{
+				descriptor = undefined
+				continue
+			}
+		}
+		
+		if (!currentSrc)
+			currentSrc = src
+		
+		break
+	}
+	
+	return [currentSrc, descriptor]
+}
 
 new MutationObserver(mutations =>
 {
@@ -115,11 +188,14 @@ new MutationObserver(mutations =>
 		if (!picture) continue
 		if (!img) continue
 		
-		picture.dataset.jxl = ""
+		let descriptor = findDescriptor(img, undefined, node.srcset)
+		if (!descriptor[0]) continue
 		
 		for (let source of picture.querySelectorAll("source"))
 			source.remove()
 		
-		load(img, node.src || node.srcset)
+		load(img, ...descriptor)
+		
+		return
 	}
 }).observe(document, {subtree: true, childList: true})
