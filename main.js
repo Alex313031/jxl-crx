@@ -19,6 +19,7 @@ let createWorker = () => new Promise(f =>
 			// To avoid interfering with scripting behavior, loading the URL as JPEG XL shouldn’t be tried.
 			if (!src) return
 			
+			img.removeAttribute("srcset")
 			img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
 			
 			let receive = async ({data}) =>
@@ -29,6 +30,7 @@ let createWorker = () => new Promise(f =>
 				if (data.error)
 				{
 					img.removeAttribute("src")
+					img.removeAttribute("srcset")
 					dispatchError(img)
 					return
 				}
@@ -142,7 +144,7 @@ let findDescriptor = (img, currentSrc, srcset) =>
 	
 	for (let [i, candidate] of srcs.entries())
 	{
-		let match = candidate.match(/^\s*([^]+?)(\s+?:([0-9]*[wx]))?\s*$/)
+		let match = candidate.match(/^\s*([^]+?)(\s+[0-9]*[wx])?\s*$/)
 		if (!match) continue
 		
 		let src = match[1]
